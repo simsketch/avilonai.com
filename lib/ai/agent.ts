@@ -8,6 +8,8 @@ const openai = new OpenAI({
     "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
     "X-Title": "Avilon Therapy Bot",
   },
+  timeout: 30000, // 30 second timeout
+  maxRetries: 2, // Retry twice on connection errors
 })
 
 export const SYSTEM_PROMPT = `You are Avilon, a supportive AI therapy assistant trained in basic cognitive behavioral therapy (CBT) techniques.
@@ -85,10 +87,23 @@ export async function generateResponse(
       max_tokens: 500, // Keep responses concise
     })
 
-    return completion.choices[0]?.message?.content || "I'm having trouble responding right now. Please try again."
-  } catch (error) {
-    console.error("Error generating response:", error)
-    throw new Error("Failed to generate response")
+    const content = completion.choices[0]?.message?.content
+    if (!content) {
+      console.error("No content in API response")
+      return "I'm having trouble responding right now. Please try again."
+    }
+
+    return content
+  } catch (error: any) {
+    console.error("Error generating response:", error?.message || error)
+    console.error("Error type:", error?.constructor?.name)
+    console.error("Error details:", JSON.stringify({
+      message: error?.message,
+      status: error?.status,
+      code: error?.code,
+      type: error?.type,
+    }))
+    throw new Error(`Failed to generate response: ${error?.message || 'Unknown error'}`)
   }
 }
 
