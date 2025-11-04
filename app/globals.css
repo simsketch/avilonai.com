@@ -53,7 +53,30 @@
   * {
     @apply border-border;
   }
+
+  html,
   body {
     @apply bg-background text-foreground;
+    /* Prevent bounce/overscroll on iOS */
+    overscroll-behavior: none;
+    /* Prevent pull-to-refresh on mobile */
+    overscroll-behavior-y: contain;
+    /* Ensure proper height on mobile Safari */
+    height: 100%;
+    /* Prevent text size adjustment on mobile */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Support for iPhone notch and safe areas */
+  @supports (padding: env(safe-area-inset-top)) {
+    body {
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
+    }
+  }
+
+  /* Fix for iOS Safari iframe scrolling issues */
+  iframe {
+    -webkit-overflow-scrolling: touch;
   }
 }
