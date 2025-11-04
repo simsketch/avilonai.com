@@ -79,15 +79,39 @@ export async function generateResponse(
   messages: ChatMessage[],
   temperature: number = 0.7
 ): Promise<string> {
+  // Use direct fetch with manual timeout for better control
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 second timeout
+
   try {
-    const completion = await openai.chat.completions.create({
-      model: "deepseek/deepseek-r1-distill-llama-70b",
-      messages,
-      temperature,
-      max_tokens: 500, // Keep responses concise
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "Avilon Therapy Bot",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "deepseek/deepseek-r1-distill-llama-70b",
+        messages,
+        temperature,
+        max_tokens: 500,
+      }),
+      signal: controller.signal,
     })
 
-    const content = completion.choices[0]?.message?.content
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      console.error("OpenRouter API error:", response.status, errorText)
+      throw new Error(`API error: ${response.status}`)
+    }
+
+    const completion = await response.json()
+    const content = completion.choices?.[0]?.message?.content
+
     if (!content) {
       console.error("No content in API response")
       return "I'm having trouble responding right now. Please try again."
@@ -95,6 +119,8 @@ export async function generateResponse(
 
     return content
   } catch (error: any) {
+    clearTimeout(timeoutId)
+
     console.error("Error generating response:", error?.message || error)
     console.error("Error type:", error?.constructor?.name)
     console.error("Error details:", JSON.stringify({
@@ -102,7 +128,14 @@ export async function generateResponse(
       status: error?.status,
       code: error?.code,
       type: error?.type,
+      name: error?.name,
     }))
+
+    // If it's an abort/timeout error
+    if (error?.name === 'AbortError' || controller.signal.aborted) {
+      throw new Error('Request timed out. Please try again.')
+    }
+
     throw new Error(`Failed to generate response: ${error?.message || 'Unknown error'}`)
   }
 }
