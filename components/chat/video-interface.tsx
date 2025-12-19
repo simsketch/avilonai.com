@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Video, AlertCircle, Loader2 } from "lucide-react"
@@ -13,14 +13,45 @@ interface VideoInterfaceProps {
 
 export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
   const [conversationUrl, setConversationUrl] = useState<string | null>(null)
+  const [conversationId, setConversationId] = useState<string | null>(null)
   const [replicaName, setReplicaName] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const { toast } = useToast()
+  const initializingRef = useRef(false)
+  const initializedRef = useRef(false)
 
   useEffect(() => {
+    // Prevent duplicate calls from React Strict Mode
+    if (initializedRef.current || initializingRef.current) return
+    initializingRef.current = true
     initializeVideoSession()
   }, [sessionId])
+
+  const handleEndSession = async () => {
+    if (!conversationId) {
+      onBack?.()
+      return
+    }
+
+    try {
+      await fetch("/api/tavus/conversation/end", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversationId }),
+      })
+
+      toast({
+        title: "Session Ended",
+        description: "Your video session has been ended.",
+      })
+    } catch (error) {
+      console.error("Error ending session:", error)
+      // Still call onBack even if ending fails
+    } finally {
+      onBack?.()
+    }
+  }
 
   const initializeVideoSession = async () => {
     try {
@@ -39,8 +70,13 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
       }
 
       const data = await response.json()
+      console.log('Tavus conversation response:', data)
+      console.log('Setting conversation URL:', data.conversationUrl)
+
       setConversationUrl(data.conversationUrl)
+      setConversationId(data.conversationId)
       setReplicaName(data.replicaName)
+      initializedRef.current = true
 
       toast({
         title: "Video Session Ready",
@@ -49,6 +85,7 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
     } catch (error: any) {
       console.error("Video session error:", error)
       setError(error.message || "Failed to start video session")
+      initializingRef.current = false
       toast({
         title: "Error",
         description: error.message || "Failed to start video session",
@@ -106,7 +143,14 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
                   Go Back
                 </Button>
               )}
-              <Button onClick={initializeVideoSession} className="flex-1">
+              <Button
+                onClick={() => {
+                  initializingRef.current = false
+                  initializedRef.current = false
+                  initializeVideoSession()
+                }}
+                className="flex-1"
+              >
                 Try Again
               </Button>
             </div>
@@ -115,6 +159,8 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
       </div>
     )
   }
+
+  console.log('Rendering VideoInterface:', { conversationUrl, conversationId, replicaName, isLoading, error })
 
   return (
     <div
@@ -140,7 +186,7 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
               </div>
             </div>
             {onBack && (
-              <Button variant="outline" onClick={onBack} size="sm" className="text-xs md:text-sm">
+              <Button variant="outline" onClick={handleEndSession} size="sm" className="text-xs md:text-sm">
                 End
               </Button>
             )}
@@ -167,6 +213,8 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
                 border: 'none',
                 overflow: 'hidden',
               }}
+              onLoad={() => console.log('Tavus iframe loaded successfully')}
+              onError={(e) => console.error('Tavus iframe error:', e)}
             />
           ) : (
             <div className="flex items-center justify-center h-full">

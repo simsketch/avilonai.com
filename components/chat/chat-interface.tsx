@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Send, AlertTriangle } from "lucide-react"
+import { Send, AlertTriangle, Video, MessageSquare } from "lucide-react"
+import { VideoInterface } from "./video-interface"
 
 interface Message {
   role: "user" | "assistant"
@@ -25,10 +26,13 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [currentSessionId, setCurrentSessionId] = useState(sessionId)
-  const [sessionType, setSessionType] = useState<"quick_checkin" | "guided_cbt">("quick_checkin")
+  const [sessionType, setSessionType] = useState<"quick_checkin" | "guided_cbt" | "emotional_conversation">("quick_checkin")
+  const [sessionMode, setSessionMode] = useState<"text" | "video">("text")
   const [cbtExercise, setCbtExercise] = useState<"thought_challenging" | "deep_breathing" | "grounding" | null>(null)
   const [moodScore, setMoodScore] = useState<number | null>(null)
-  const [sessionStarted, setSessionStarted] = useState(false)
+  const [sessionStarted, setSessionStarted] = useState(!!sessionId)
+  const [isLoadingSession, setIsLoadingSession] = useState(!!sessionId)
+  const [isVideoSession, setIsVideoSession] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
@@ -39,6 +43,40 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   useEffect(() => {
     scrollToBottom()
   }, [messages])
+
+  // Load existing session messages
+  useEffect(() => {
+    if (sessionId) {
+      loadSessionMessages(sessionId)
+    }
+  }, [sessionId])
+
+  const loadSessionMessages = async (sessionId: string) => {
+    try {
+      const response = await fetch(`/api/chat/messages?sessionId=${sessionId}`)
+      if (!response.ok) throw new Error("Failed to load messages")
+
+      const data = await response.json()
+      const loadedMessages = data.messages.map((msg: any) => ({
+        role: msg.role,
+        content: msg.content,
+        timestamp: new Date(msg.created_at),
+      }))
+
+      setMessages(loadedMessages)
+      setCurrentSessionId(sessionId)
+      setSessionStarted(true)
+      setIsLoadingSession(false)
+    } catch (error) {
+      console.error("Error loading session:", error)
+      toast({
+        title: "Error",
+        description: "Failed to load session messages.",
+        variant: "destructive",
+      })
+      setIsLoadingSession(false)
+    }
+  }
 
   const startSession = async () => {
     if (moodScore === null) {
@@ -67,21 +105,30 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
       setCurrentSessionId(data.sessionId)
       setSessionStarted(true)
 
-      // Add initial assistant message
-      if (data.initialMessage) {
-        setMessages([
-          {
-            role: "assistant",
-            content: data.initialMessage,
-            timestamp: new Date(),
-          },
-        ])
-      }
+      // If video mode is selected, set isVideoSession to true
+      if (sessionMode === "video") {
+        setIsVideoSession(true)
+        toast({
+          title: "Starting Video Session",
+          description: "Preparing your video conversation with Avilon...",
+        })
+      } else {
+        // Add initial assistant message for text mode
+        if (data.initialMessage) {
+          setMessages([
+            {
+              role: "assistant",
+              content: data.initialMessage,
+              timestamp: new Date(),
+            },
+          ])
+        }
 
-      toast({
-        title: "Session Started",
-        description: "You can now start chatting with Avilon.",
-      })
+        toast({
+          title: "Session Started",
+          description: "You can now start chatting with Avilon.",
+        })
+      }
     } catch (error) {
       toast({
         title: "Error",
@@ -153,10 +200,21 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     }
   }
 
+  if (isLoadingSession) {
+    return (
+      <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-4 text-slate-600">Loading session...</p>
+        </div>
+      </div>
+    )
+  }
+
   if (!sessionStarted) {
     return (
       <div className="max-w-2xl mx-auto p-6">
-        <Card>
+        <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Start a New Session</CardTitle>
           </CardHeader>
@@ -184,11 +242,42 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
             </div>
 
             <div>
+              <Label>Session Mode</Label>
+              <p className="text-sm text-gray-600 mb-2">
+                Choose how you'd like to connect with Avilon
+              </p>
+              <Select
+                value={sessionMode}
+                onValueChange={(value) =>
+                  setSessionMode(value as "text" | "video")
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="text">
+                    <div className="flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Text Chat</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="video">
+                    <div className="flex items-center gap-2">
+                      <Video className="h-4 w-4" />
+                      <span>Video Chat (Face-to-Face)</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
               <Label>Session Type</Label>
               <Select
                 value={sessionType}
                 onValueChange={(value) =>
-                  setSessionType(value as "quick_checkin" | "guided_cbt")
+                  setSessionType(value as "quick_checkin" | "guided_cbt" | "emotional_conversation")
                 }
               >
                 <SelectTrigger>
@@ -197,6 +286,9 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                 <SelectContent>
                   <SelectItem value="quick_checkin">
                     Quick Check-in (Unstructured Chat)
+                  </SelectItem>
+                  <SelectItem value="emotional_conversation">
+                    Emotional Conversation
                   </SelectItem>
                   <SelectItem value="guided_cbt">
                     Guided CBT Exercise
@@ -241,18 +333,35 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     )
   }
 
+  // If video session is active, show VideoInterface
+  if (isVideoSession && currentSessionId) {
+    return (
+      <VideoInterface
+        sessionId={currentSessionId}
+        onBack={() => {
+          setIsVideoSession(false)
+          setSessionStarted(false)
+        }}
+      />
+    )
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto p-6">
-      <Card className="flex-1 flex flex-col">
-        <CardHeader className="border-b">
+      <Card className="flex-1 flex flex-col shadow-lg border-slate-200">
+        <CardHeader className="border-b border-slate-200 bg-white/50 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <CardTitle>Chat with Avilon</CardTitle>
-            <span className="text-sm text-gray-500">
-              {sessionType === "quick_checkin" ? "Quick Check-in" : "Guided CBT"}
+            <CardTitle className="text-slate-800">Chat with Avilon</CardTitle>
+            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium">
+              {sessionType === "quick_checkin"
+                ? "Quick Check-in"
+                : sessionType === "emotional_conversation"
+                ? "Emotional Conversation"
+                : "Guided CBT"}
             </span>
           </div>
         </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
+        <CardContent className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-white to-slate-50">
           {messages.map((message, index) => (
             <div
               key={index}
@@ -261,12 +370,12 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
               }`}
             >
               <div
-                className={`max-w-[80%] rounded-lg p-4 ${
+                className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
                   message.role === "user"
-                    ? "bg-blue-600 text-white"
+                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
                     : message.isCrisis
-                    ? "bg-red-50 border-2 border-red-500 text-gray-900"
-                    : "bg-gray-100 text-gray-900"
+                    ? "bg-red-50 border-2 border-red-400 text-slate-900"
+                    : "bg-white border border-slate-200 text-slate-900"
                 }`}
               >
                 {message.isCrisis && (
@@ -275,10 +384,10 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                     <span>Crisis Support</span>
                   </div>
                 )}
-                <p className="whitespace-pre-wrap">{message.content}</p>
+                <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                 <p
                   className={`text-xs mt-2 ${
-                    message.role === "user" ? "text-blue-100" : "text-gray-500"
+                    message.role === "user" ? "text-blue-100" : "text-slate-500"
                   }`}
                 >
                   {message.timestamp.toLocaleTimeString()}
@@ -288,31 +397,31 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
           ))}
           {isLoading && (
             <div className="flex justify-start">
-              <div className="bg-gray-100 rounded-lg p-4">
+              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
                 <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-100" />
-                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce delay-200" />
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
+                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-100" />
+                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-200" />
                 </div>
               </div>
             </div>
           )}
           <div ref={messagesEndRef} />
         </CardContent>
-        <div className="border-t p-4">
+        <div className="border-t border-slate-200 p-4 bg-white/50 backdrop-blur-sm">
           <div className="flex gap-2">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-              className="flex-1 min-h-[60px] max-h-[120px]"
+              className="flex-1 min-h-[60px] max-h-[120px] border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl resize-none"
               disabled={isLoading}
             />
             <Button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="self-end"
+              className="self-end bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg"
             >
               <Send className="h-4 w-4" />
             </Button>

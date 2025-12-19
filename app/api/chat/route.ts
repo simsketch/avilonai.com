@@ -94,10 +94,12 @@ export async function POST(req: NextRequest) {
       response: aiResponse,
       isCrisis: false,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Chat error:", error)
+    console.error("Chat error message:", error?.message)
+    console.error("Chat error stack:", error?.stack)
     return NextResponse.json(
-      { error: "Failed to generate response" },
+      { error: error?.message || "Failed to generate response" },
       { status: 500 }
     )
   }

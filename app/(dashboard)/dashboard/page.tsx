@@ -5,9 +5,10 @@ import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { format } from "date-fns"
+import { formatDistanceToNow, format } from "date-fns"
 import Link from "next/link"
-import { MessageSquare, TrendingUp, FileText, AlertCircle } from "lucide-react"
+import { MessageSquare, TrendingUp, FileText, AlertCircle, Clock, ArrowRight } from "lucide-react"
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 interface DashboardData {
   profile: any
@@ -90,15 +91,15 @@ export default function DashboardPage() {
     data.moodTrend.length > 0 ? data.moodTrend[0].score : null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
+      <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-blue-600">Avilon</h1>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">Avilon</h1>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-gray-600">
+            <span className="text-sm text-slate-600">
               {session?.user?.email}
             </span>
-            <Button variant="outline" onClick={() => router.push("/api/auth/signout")}>
+            <Button variant="outline" onClick={() => router.push("/api/auth/signout")} className="hover:bg-slate-50 transition-colors">
               Sign Out
             </Button>
           </div>
@@ -124,48 +125,54 @@ export default function DashboardPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-all duration-300 border-slate-200 bg-gradient-to-br from-white to-blue-50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-slate-700">
                 Recent Mood
               </CardTitle>
-              <TrendingUp className="h-4 w-4 text-gray-600" />
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <TrendingUp className="h-4 w-4 text-blue-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
                 {recentMoodScore ? `${recentMoodScore}/10` : "N/A"}
               </div>
-              <p className="text-xs text-gray-600 mt-1">
+              <p className="text-xs text-slate-600 mt-1">
                 Average: {avgMoodScore}
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-all duration-300 border-slate-200 bg-gradient-to-br from-white to-indigo-50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-slate-700">
                 Total Sessions
               </CardTitle>
-              <MessageSquare className="h-4 w-4 text-gray-600" />
+              <div className="p-2 bg-indigo-100 rounded-lg">
+                <MessageSquare className="h-4 w-4 text-indigo-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.sessions.length}</div>
-              <p className="text-xs text-gray-600 mt-1">
+              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{data.sessions.length}</div>
+              <p className="text-xs text-slate-600 mt-1">
                 Therapy conversations
               </p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-all duration-300 border-slate-200 bg-gradient-to-br from-white to-purple-50">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+              <CardTitle className="text-sm font-medium text-slate-700">
                 Session Notes
               </CardTitle>
-              <FileText className="h-4 w-4 text-gray-600" />
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <FileText className="h-4 w-4 text-purple-600" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{data.notes.length}</div>
-              <p className="text-xs text-gray-600 mt-1">
+              <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">{data.notes.length}</div>
+              <p className="text-xs text-slate-600 mt-1">
                 Saved summaries
               </p>
             </CardContent>
@@ -173,7 +180,7 @@ export default function DashboardPage() {
         </div>
 
         {data.moodTrend.length > 0 && (
-          <Card>
+          <Card className="shadow-md hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle>Mood Trend</CardTitle>
               <CardDescription>
@@ -181,27 +188,58 @@ export default function DashboardPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="h-48 flex items-end justify-between gap-2">
-                {data.moodTrend.slice(0, 10).reverse().map((item, index) => (
-                  <div
-                    key={index}
-                    className="flex-1 flex flex-col items-center"
-                  >
-                    <div
-                      className="w-full bg-blue-500 rounded-t"
-                      style={{ height: `${(item.score / 10) * 100}%` }}
-                    />
-                    <span className="text-xs text-gray-600 mt-1">
-                      {item.score}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <AreaChart
+                  data={data.moodTrend.slice(0, 14).reverse().map((item, index) => ({
+                    name: format(new Date(item.date), "MMM d"),
+                    mood: item.score,
+                    index: index + 1
+                  }))}
+                  margin={{ top: 10, right: 30, left: 0, bottom: 0 }}
+                >
+                  <defs>
+                    <linearGradient id="colorMood" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.1}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis
+                    dataKey="name"
+                    stroke="#64748b"
+                    tick={{ fill: '#64748b', fontSize: 12 }}
+                  />
+                  <YAxis
+                    domain={[0, 10]}
+                    stroke="#64748b"
+                    tick={{ fill: '#64748b', fontSize: 12 }}
+                  />
+                  <Tooltip
+                    contentStyle={{
+                      backgroundColor: 'white',
+                      border: '1px solid #e2e8f0',
+                      borderRadius: '8px',
+                      boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
+                    }}
+                    labelStyle={{ color: '#1e293b', fontWeight: 600 }}
+                    formatter={(value: number) => [`${value}/10`, 'Mood']}
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="mood"
+                    stroke="#3b82f6"
+                    strokeWidth={3}
+                    fillOpacity={1}
+                    fill="url(#colorMood)"
+                    animationDuration={1000}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
             </CardContent>
           </Card>
         )}
 
-        <Card>
+        <Card className="shadow-md hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle>Recent Sessions</CardTitle>
             <CardDescription>
@@ -210,34 +248,40 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {data.sessions.length === 0 ? (
-              <p className="text-gray-500 text-center py-8">
+              <p className="text-slate-500 text-center py-8">
                 No sessions yet. Start your first session!
               </p>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-3">
                 {data.sessions.slice(0, 5).map((session) => (
-                  <div
-                    key={session.id}
-                    className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
-                  >
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">
-                          {session.session_type === "quick_checkin"
-                            ? "Quick Check-in"
-                            : "Guided CBT"}
-                        </span>
-                        {session.mood_score && (
-                          <span className="text-sm text-gray-600">
-                            Mood: {session.mood_score}/10
+                  <Link key={session.id} href={`/chat?sessionId=${session.id}`}>
+                    <div className="group flex items-center justify-between p-4 border border-slate-200 rounded-xl hover:bg-gradient-to-r hover:from-blue-50 hover:to-indigo-50 hover:border-blue-300 transition-all duration-300 cursor-pointer">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="p-2 bg-blue-100 rounded-lg group-hover:bg-blue-200 transition-colors">
+                            <MessageSquare className="h-4 w-4 text-blue-600" />
+                          </div>
+                          <span className="font-semibold text-slate-800">
+                            {session.session_type === "quick_checkin"
+                              ? "Quick Check-in"
+                              : session.session_type === "emotional_conversation"
+                              ? "Emotional Conversation"
+                              : "Guided CBT"}
                           </span>
-                        )}
+                          {session.mood_score && (
+                            <span className="px-2 py-1 bg-slate-100 text-sm text-slate-700 rounded-full">
+                              Mood: {session.mood_score}/10
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                          <Clock className="h-3 w-3" />
+                          <span>{formatDistanceToNow(new Date(session.created_at), { addSuffix: true })}</span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-500">
-                        {format(new Date(session.created_at), "PPp")}
-                      </p>
+                      <ArrowRight className="h-5 w-5 text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </div>
             )}

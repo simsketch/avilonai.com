@@ -35,6 +35,15 @@ Important safety protocols:
 
 Remember: You are a supportive companion, not a replacement for professional mental health care.`
 
+export const EMOTIONAL_CONVERSATION_PROMPT = `I'm here to help you explore and process your emotions in a safe, supportive space. In this session, we'll focus on:
+
+- Understanding and naming your emotions
+- Exploring what triggered these feelings
+- Validating your emotional experience
+- Finding healthy ways to express and process what you're feeling
+
+There's no judgment here - all emotions are valid and worth exploring. Take your time, and share whatever feels right for you. What emotions are you experiencing right now?`
+
 export const CBT_EXERCISE_PROMPTS = {
   thought_challenging: `Let's work through a thought-challenging exercise together. This CBT technique helps identify and reframe negative automatic thoughts.
 

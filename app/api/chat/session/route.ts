@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { supabaseAdmin } from "@/lib/db/supabase"
-import { CBT_EXERCISE_PROMPTS } from "@/lib/ai/agent"
+import { CBT_EXERCISE_PROMPTS, EMOTIONAL_CONVERSATION_PROMPT } from "@/lib/ai/agent"
 
 export async function POST(req: NextRequest) {
   try {
@@ -46,6 +46,8 @@ export async function POST(req: NextRequest) {
 
     if (sessionType === "guided_cbt" && cbtExercise) {
       initialMessage += `\n\n${CBT_EXERCISE_PROMPTS[cbtExercise as keyof typeof CBT_EXERCISE_PROMPTS]}`
+    } else if (sessionType === "emotional_conversation") {
+      initialMessage += `\n\n${EMOTIONAL_CONVERSATION_PROMPT}`
     } else {
       initialMessage += `\n\nWhat's on your mind today?`
     }
