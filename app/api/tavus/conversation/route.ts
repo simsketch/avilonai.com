@@ -20,9 +20,10 @@ export async function POST(req: NextRequest) {
 
     // Use specific Tavus replica and persona
     // These IDs are from the Tavus dashboard and can be reused across sessions
+    // NOTE: Do not modify this persona in Tavus UI - it breaks the config
     const replicaId = "ref2207648cd"  // Elon replica
     const replicaName = "Elon"
-    const personaId = "p46241d7e5f6"  // Fresh working persona
+    const personaId = "p78ab7d2f228"  // Working persona with condensed context
 
     console.log(`Using replica: ${replicaName} (${replicaId})`)
     console.log(`Using persona: ${personaId}`)
