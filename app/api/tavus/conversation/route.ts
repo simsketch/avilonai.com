@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     // These IDs are from the Tavus dashboard and can be reused across sessions
     const replicaId = "ref2207648cd"  // Elon replica
     const replicaName = "Elon"
-    const personaId = "p75f77895821"  // Pre-created persona in Tavus UI
+    const personaId = "p46241d7e5f6"  // Fresh working persona
 
     console.log(`Using replica: ${replicaName} (${replicaId})`)
     console.log(`Using persona: ${personaId}`)
@@ -38,7 +38,11 @@ export async function POST(req: NextRequest) {
     const conversation = await createConversation(
       replicaId,
       personaId,
-      `Therapy Session - ${new Date().toISOString()}`
+      `Therapy Session - ${new Date().toISOString()}`,
+      {
+        customGreeting: "Hi there! I'm so glad you could join me today. How are you feeling? I'm here to listen and support you.",
+        conversationalContext: `This is a therapy session. The user has started a ${sessionType || 'general'} session with a mood score of ${moodScore || 'not specified'}. Be warm, empathetic, and supportive. Listen actively and ask thoughtful follow-up questions.`
+      }
     )
 
     console.log(`Created conversation:`, JSON.stringify(conversation, null, 2))

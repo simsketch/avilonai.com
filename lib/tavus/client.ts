@@ -127,20 +127,36 @@ export async function createPersona(
 export async function createConversation(
   replicaId: string,
   personaId: string,
-  conversationName: string = "Therapy Session"
+  conversationName: string = "Therapy Session",
+  options?: {
+    customGreeting?: string
+    conversationalContext?: string
+  }
 ): Promise<TavusConversation> {
   try {
+    const body: Record<string, any> = {
+      replica_id: replicaId,
+      persona_id: personaId,
+      conversation_name: conversationName,
+    }
+
+    // Add custom greeting to make the AI speak first
+    if (options?.customGreeting) {
+      body.custom_greeting = options.customGreeting
+    }
+
+    // Add conversational context for personalization
+    if (options?.conversationalContext) {
+      body.conversational_context = options.conversationalContext
+    }
+
     const response = await fetch(`${TAVUS_API_BASE_URL}/conversations`, {
       method: "POST",
       headers: {
         "x-api-key": TAVUS_API_KEY || "",
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        replica_id: replicaId,
-        persona_id: personaId,
-        conversation_name: conversationName,
-      }),
+      body: JSON.stringify(body),
     })
 
     if (!response.ok) {
