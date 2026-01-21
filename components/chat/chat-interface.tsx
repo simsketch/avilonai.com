@@ -3,12 +3,12 @@
 import { useState, useRef, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Send, AlertTriangle, Video, MessageSquare } from "lucide-react"
-import { VideoInterface } from "./video-interface"
+import { Send, AlertTriangle, Video, MessageSquare, User, Sparkles, Check, Heart, Brain, Wind, Leaf } from "lucide-react"
+import { AvatarVideoInterface } from "./avatar-video-interface"
+import { AvatarSetup } from "./avatar-setup"
 
 interface Message {
   role: "user" | "assistant"
@@ -19,6 +19,12 @@ interface Message {
 
 interface ChatInterfaceProps {
   sessionId?: string
+}
+
+interface AvatarProfile {
+  voiceModelId: string
+  avatarImageUrl: string
+  voiceName: string
 }
 
 export function ChatInterface({ sessionId }: ChatInterfaceProps) {
@@ -33,6 +39,12 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   const [sessionStarted, setSessionStarted] = useState(!!sessionId)
   const [isLoadingSession, setIsLoadingSession] = useState(!!sessionId)
   const [isVideoSession, setIsVideoSession] = useState(false)
+
+  // Avatar/Digital Twin state
+  const [avatarProfile, setAvatarProfile] = useState<AvatarProfile | null>(null)
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(true)
+  const [showAvatarSetup, setShowAvatarSetup] = useState(false)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { toast } = useToast()
 
@@ -44,12 +56,35 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     scrollToBottom()
   }, [messages])
 
+  // Check if user has an avatar profile
+  useEffect(() => {
+    checkAvatarProfile()
+  }, [])
+
   // Load existing session messages
   useEffect(() => {
     if (sessionId) {
       loadSessionMessages(sessionId)
     }
   }, [sessionId])
+
+  const checkAvatarProfile = async () => {
+    try {
+      setIsLoadingAvatar(true)
+      const response = await fetch("/api/avatar/stream")
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.hasAvatarProfile && data.profile) {
+          setAvatarProfile(data.profile)
+        }
+      }
+    } catch (error) {
+      console.error("Error checking avatar profile:", error)
+    } finally {
+      setIsLoadingAvatar(false)
+    }
+  }
 
   const loadSessionMessages = async (sessionId: string) => {
     try {
@@ -88,6 +123,12 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
       return
     }
 
+    // If video mode but no avatar profile, show setup
+    if (sessionMode === "video" && !avatarProfile) {
+      setShowAvatarSetup(true)
+      return
+    }
+
     try {
       const response = await fetch("/api/chat/session", {
         method: "POST",
@@ -110,7 +151,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
         setIsVideoSession(true)
         toast({
           title: "Starting Video Session",
-          description: "Preparing your video conversation with Avilon...",
+          description: "Preparing your digital twin conversation...",
         })
       } else {
         // Add initial assistant message for text mode
@@ -200,143 +241,304 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     }
   }
 
+  const handleAvatarSetupComplete = (profileData: AvatarProfile) => {
+    setAvatarProfile(profileData)
+    setShowAvatarSetup(false)
+    // Now start the session
+    toast({
+      title: "Digital Twin Created!",
+      description: "Starting your video session...",
+    })
+    // Trigger session start after avatar setup
+    setTimeout(() => startSession(), 500)
+  }
+
+  // Mood emoji helper
+  const getMoodEmoji = (score: number) => {
+    if (score <= 2) return "😔"
+    if (score <= 4) return "😕"
+    if (score <= 6) return "😐"
+    if (score <= 8) return "🙂"
+    return "😊"
+  }
+
   if (isLoadingSession) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
-          <p className="mt-4 text-slate-600">Loading session...</p>
+          <div className="relative">
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-terracotta to-coral animate-breathe mx-auto" />
+            <div className="absolute inset-0 w-16 h-16 rounded-full bg-gradient-to-br from-sage to-sage-light animate-breathe-slow mx-auto opacity-50" style={{ animationDelay: '0.5s' }} />
+          </div>
+          <p className="mt-6 text-muted-foreground font-medium">Loading your session...</p>
         </div>
+      </div>
+    )
+  }
+
+  // Show avatar setup flow
+  if (showAvatarSetup) {
+    return (
+      <div className="max-w-2xl mx-auto p-6">
+        <AvatarSetup
+          onComplete={handleAvatarSetupComplete}
+          onSkip={() => {
+            setShowAvatarSetup(false)
+            setSessionMode("text")
+            toast({
+              title: "Switched to Text Mode",
+              description: "You can set up your digital twin later from the session options.",
+            })
+          }}
+        />
       </div>
     )
   }
 
   if (!sessionStarted) {
     return (
-      <div className="max-w-2xl mx-auto p-6">
-        <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle>Start a New Session</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div>
-              <Label>How are you feeling today? (1-10)</Label>
-              <p className="text-sm text-gray-600 mb-2">
-                1 = Very low, 10 = Excellent
+      <div className="max-w-2xl mx-auto p-6 space-y-8">
+        {/* Decorative blobs */}
+        <div className="fixed top-20 left-10 w-64 h-64 bg-terracotta-light/20 blob animate-float -z-10" />
+        <div className="fixed bottom-20 right-10 w-48 h-48 bg-sage-light/30 blob-2 animate-float -z-10" style={{ animationDelay: '2s' }} />
+
+        {/* Header */}
+        <div className="text-center space-y-4 fade-in-up">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-terracotta to-coral soft-glow">
+            <Leaf className="w-8 h-8 text-white" />
+          </div>
+          <h1 className="font-display text-3xl md:text-4xl text-deep-brown">
+            Begin Your Session
+          </h1>
+          <p className="text-muted-foreground max-w-md mx-auto">
+            Take a moment to check in with yourself. Your wellness journey starts with awareness.
+          </p>
+        </div>
+
+        {/* Main Card */}
+        <div className="glass-card rounded-3xl p-8 warm-shadow fade-in-up fade-in-up-delay-1">
+          <div className="space-y-8">
+            {/* Mood Score */}
+            <div className="space-y-4">
+              <Label className="text-lg font-display text-deep-brown">How are you feeling today?</Label>
+              <div className="grid grid-cols-5 md:grid-cols-10 gap-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                  <button
+                    key={score}
+                    onClick={() => setMoodScore(score)}
+                    className={`
+                      relative p-3 rounded-xl transition-all duration-300 ease-organic
+                      ${moodScore === score
+                        ? "bg-gradient-to-br from-terracotta to-coral text-white scale-110 warm-shadow"
+                        : "bg-soft-sand hover:bg-terracotta-light/30 text-deep-brown hover:scale-105"
+                      }
+                    `}
+                  >
+                    <span className="font-medium">{score}</span>
+                    {moodScore === score && (
+                      <span className="absolute -top-6 left-1/2 -translate-x-1/2 text-2xl">
+                        {getMoodEmoji(score)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+              <p className="text-sm text-muted-foreground text-center">
+                1 = Very low &bull; 10 = Excellent
               </p>
-              <Select
-                value={moodScore?.toString()}
-                onValueChange={(value) => setMoodScore(parseInt(value))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select your mood score" />
-                </SelectTrigger>
-                <SelectContent>
-                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
-                    <SelectItem key={score} value={score.toString()}>
-                      {score}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
             </div>
 
-            <div>
-              <Label>Session Mode</Label>
-              <p className="text-sm text-gray-600 mb-2">
-                Choose how you'd like to connect with Avilon
-              </p>
-              <Select
-                value={sessionMode}
-                onValueChange={(value) =>
-                  setSessionMode(value as "text" | "video")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="text">
-                    <div className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4" />
-                      <span>Text Chat</span>
+            {/* Session Mode */}
+            <div className="space-y-4">
+              <Label className="text-lg font-display text-deep-brown">Choose Your Connection</Label>
+              <div className="grid grid-cols-2 gap-4">
+                <button
+                  onClick={() => setSessionMode("text")}
+                  className={`
+                    relative p-6 rounded-2xl transition-all duration-300 ease-organic group
+                    ${sessionMode === "text"
+                      ? "bg-gradient-to-br from-sage to-sage-light text-white warm-shadow-lg scale-[1.02]"
+                      : "glass-card hover:bg-sage-light/30"
+                    }
+                  `}
+                >
+                  <div className={`
+                    w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-all
+                    ${sessionMode === "text"
+                      ? "bg-white/20"
+                      : "bg-sage-light/50 group-hover:bg-sage/20"
+                    }
+                  `}>
+                    <MessageSquare className={`h-7 w-7 ${
+                      sessionMode === "text" ? "text-white" : "text-sage"
+                    }`} />
+                  </div>
+                  <p className={`font-display text-lg ${
+                    sessionMode === "text" ? "text-white" : "text-deep-brown"
+                  }`}>Text Chat</p>
+                  <p className={`text-sm mt-1 ${
+                    sessionMode === "text" ? "text-white/80" : "text-muted-foreground"
+                  }`}>Write your thoughts</p>
+                </button>
+
+                <button
+                  onClick={() => setSessionMode("video")}
+                  className={`
+                    relative p-6 rounded-2xl transition-all duration-300 ease-organic group
+                    ${sessionMode === "video"
+                      ? "bg-gradient-to-br from-terracotta to-coral text-white warm-shadow-lg scale-[1.02]"
+                      : "glass-card hover:bg-terracotta-light/30"
+                    }
+                  `}
+                >
+                  {avatarProfile && (
+                    <div className="absolute top-3 right-3">
+                      <div className="w-6 h-6 rounded-full bg-sage flex items-center justify-center">
+                        <Check className="h-4 w-4 text-white" />
+                      </div>
                     </div>
-                  </SelectItem>
-                  <SelectItem value="video">
-                    <div className="flex items-center gap-2">
-                      <Video className="h-4 w-4" />
-                      <span>Video Chat (Face-to-Face)</span>
+                  )}
+                  <div className={`
+                    w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 transition-all
+                    ${sessionMode === "video"
+                      ? "bg-white/20"
+                      : "bg-terracotta-light/50 group-hover:bg-terracotta/20"
+                    }
+                  `}>
+                    <Video className={`h-7 w-7 ${
+                      sessionMode === "video" ? "text-white" : "text-terracotta"
+                    }`} />
+                  </div>
+                  <p className={`font-display text-lg ${
+                    sessionMode === "video" ? "text-white" : "text-deep-brown"
+                  }`}>Video Chat</p>
+                  <p className={`text-sm mt-1 ${
+                    sessionMode === "video" ? "text-white/80" : "text-muted-foreground"
+                  }`}>
+                    {avatarProfile ? "Twin ready" : "Create your twin"}
+                  </p>
+                </button>
+              </div>
+
+              {/* Digital Twin Status */}
+              {sessionMode === "video" && (
+                <div className={`
+                  p-4 rounded-2xl transition-all duration-300
+                  ${avatarProfile
+                    ? "bg-sage-light/30 border border-sage/20"
+                    : "bg-coral/10 border border-coral/20"
+                  }
+                `}>
+                  <div className="flex items-center gap-3">
+                    <div className={`
+                      w-10 h-10 rounded-full flex items-center justify-center
+                      ${avatarProfile ? "bg-sage/20" : "bg-coral/20"}
+                    `}>
+                      {avatarProfile ? (
+                        <User className="h-5 w-5 text-sage" />
+                      ) : (
+                        <Sparkles className="h-5 w-5 text-coral" />
+                      )}
                     </div>
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+                    <div className="flex-1">
+                      <p className={`font-medium ${avatarProfile ? "text-sage" : "text-deep-brown"}`}>
+                        {avatarProfile ? "Digital Twin Ready" : "Create Your Digital Twin"}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {avatarProfile
+                          ? `Voice: ${avatarProfile.voiceName || "Custom"}`
+                          : "Upload a photo & voice sample"
+                        }
+                      </p>
+                    </div>
+                    {avatarProfile && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-sage hover:text-sage/80 hover:bg-sage/10"
+                        onClick={() => setShowAvatarSetup(true)}
+                      >
+                        Update
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <div>
-              <Label>Session Type</Label>
-              <Select
-                value={sessionType}
-                onValueChange={(value) =>
-                  setSessionType(value as "quick_checkin" | "guided_cbt" | "emotional_conversation")
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="quick_checkin">
-                    Quick Check-in (Unstructured Chat)
-                  </SelectItem>
-                  <SelectItem value="emotional_conversation">
-                    Emotional Conversation
-                  </SelectItem>
-                  <SelectItem value="guided_cbt">
-                    Guided CBT Exercise
-                  </SelectItem>
-                </SelectContent>
-              </Select>
+            {/* Session Type */}
+            <div className="space-y-4">
+              <Label className="text-lg font-display text-deep-brown">Session Type</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {[
+                  { value: "quick_checkin", icon: Heart, label: "Quick Check-in", desc: "Casual chat" },
+                  { value: "emotional_conversation", icon: Brain, label: "Deep Conversation", desc: "Explore feelings" },
+                  { value: "guided_cbt", icon: Wind, label: "Guided Exercise", desc: "CBT techniques" },
+                ].map(({ value, icon: Icon, label, desc }) => (
+                  <button
+                    key={value}
+                    onClick={() => setSessionType(value as typeof sessionType)}
+                    className={`
+                      p-4 rounded-xl text-left transition-all duration-300 ease-organic
+                      ${sessionType === value
+                        ? "bg-gradient-to-br from-terracotta/10 to-coral/10 border-2 border-terracotta/30"
+                        : "bg-soft-sand/50 border-2 border-transparent hover:border-terracotta/20"
+                      }
+                    `}
+                  >
+                    <Icon className={`h-5 w-5 mb-2 ${
+                      sessionType === value ? "text-terracotta" : "text-warm-gray"
+                    }`} />
+                    <p className={`font-medium ${
+                      sessionType === value ? "text-terracotta" : "text-deep-brown"
+                    }`}>{label}</p>
+                    <p className="text-xs text-muted-foreground">{desc}</p>
+                  </button>
+                ))}
+              </div>
             </div>
 
+            {/* CBT Exercise Selection */}
             {sessionType === "guided_cbt" && (
-              <div>
-                <Label>Choose an Exercise</Label>
+              <div className="space-y-3 animate-fade-in">
+                <Label className="text-deep-brown">Choose an Exercise</Label>
                 <Select
                   value={cbtExercise || ""}
-                  onValueChange={(value) =>
-                    setCbtExercise(value as typeof cbtExercise)
-                  }
+                  onValueChange={(value) => setCbtExercise(value as typeof cbtExercise)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className="rounded-xl border-border/50 bg-white/50">
                     <SelectValue placeholder="Select a CBT exercise" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="thought_challenging">
-                      Thought Challenging
-                    </SelectItem>
-                    <SelectItem value="deep_breathing">
-                      Deep Breathing
-                    </SelectItem>
-                    <SelectItem value="grounding">
-                      5-4-3-2-1 Grounding
-                    </SelectItem>
+                    <SelectItem value="thought_challenging">Thought Challenging</SelectItem>
+                    <SelectItem value="deep_breathing">Deep Breathing</SelectItem>
+                    <SelectItem value="grounding">5-4-3-2-1 Grounding</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             )}
 
-            <Button onClick={startSession} className="w-full">
-              Start Session
+            {/* Start Button */}
+            <Button
+              onClick={startSession}
+              disabled={isLoadingAvatar || moodScore === null}
+              className="w-full h-14 rounded-2xl text-lg font-display bg-gradient-to-r from-terracotta to-coral hover:from-terracotta/90 hover:to-coral/90 transition-all duration-300 warm-shadow hover:warm-shadow-lg organic-hover disabled:opacity-50"
+            >
+              {sessionMode === "video" && !avatarProfile
+                ? "Create Digital Twin & Start"
+                : "Begin Session"
+              }
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )
   }
 
-  // If video session is active, show VideoInterface
+  // If video session is active, show AvatarVideoInterface (replaced Tavus)
   if (isVideoSession && currentSessionId) {
     return (
-      <VideoInterface
+      <AvatarVideoInterface
         sessionId={currentSessionId}
         onBack={() => {
           setIsVideoSession(false)
@@ -346,40 +548,56 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     )
   }
 
+  // Chat Interface
   return (
-    <div className="flex flex-col h-[calc(100vh-8rem)] max-w-4xl mx-auto p-6">
-      <Card className="flex-1 flex flex-col shadow-lg border-slate-200">
-        <CardHeader className="border-b border-slate-200 bg-white/50 backdrop-blur-sm">
+    <div className="flex flex-col h-[calc(100vh-4rem)] max-w-4xl mx-auto p-4 md:p-6">
+      {/* Decorative elements */}
+      <div className="fixed top-20 right-10 w-32 h-32 bg-sage-light/20 blob animate-float -z-10 opacity-50" />
+      <div className="fixed bottom-40 left-5 w-24 h-24 bg-coral/10 blob-2 animate-float -z-10 opacity-50" style={{ animationDelay: '3s' }} />
+
+      {/* Chat Container */}
+      <div className="flex-1 flex flex-col glass-card rounded-3xl overflow-hidden warm-shadow-lg">
+        {/* Header */}
+        <div className="px-6 py-4 border-b border-border/30 bg-gradient-to-r from-white/80 to-warm-cream/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-slate-800">Chat with Avilon</CardTitle>
-            <span className="px-3 py-1 bg-blue-100 text-blue-700 text-sm rounded-full font-medium">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-terracotta to-coral flex items-center justify-center animate-breathe-slow">
+                <Leaf className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-display text-lg text-deep-brown">Avilon</h2>
+                <p className="text-xs text-muted-foreground">Here to support you</p>
+              </div>
+            </div>
+            <span className="px-4 py-1.5 bg-gradient-to-r from-sage-light/50 to-sage/30 text-sage rounded-full text-sm font-medium">
               {sessionType === "quick_checkin"
-                ? "Quick Check-in"
+                ? "Check-in"
                 : sessionType === "emotional_conversation"
-                ? "Emotional Conversation"
+                ? "Deep Talk"
                 : "Guided CBT"}
             </span>
           </div>
-        </CardHeader>
-        <CardContent className="flex-1 overflow-y-auto p-6 space-y-4 bg-gradient-to-b from-white to-slate-50">
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
           {messages.map((message, index) => (
             <div
               key={index}
-              className={`flex ${
-                message.role === "user" ? "justify-end" : "justify-start"
-              }`}
+              className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-fade-in-up`}
+              style={{ animationDelay: `${index * 0.05}s` }}
             >
               <div
-                className={`max-w-[80%] rounded-2xl p-4 shadow-sm ${
+                className={`max-w-[85%] md:max-w-[75%] rounded-2xl p-4 ${
                   message.role === "user"
-                    ? "bg-gradient-to-r from-blue-600 to-indigo-600 text-white"
+                    ? "bg-gradient-to-br from-terracotta to-coral text-white rounded-br-md"
                     : message.isCrisis
-                    ? "bg-red-50 border-2 border-red-400 text-slate-900"
-                    : "bg-white border border-slate-200 text-slate-900"
+                    ? "bg-gradient-to-br from-red-50 to-red-100 border-2 border-red-300 text-deep-brown rounded-bl-md"
+                    : "bg-white/80 border border-border/30 text-deep-brown rounded-bl-md warm-shadow"
                 }`}
               >
                 {message.isCrisis && (
-                  <div className="flex items-center gap-2 mb-2 text-red-600 font-semibold">
+                  <div className="flex items-center gap-2 mb-3 text-red-600 font-medium">
                     <AlertTriangle className="h-4 w-4" />
                     <span>Crisis Support</span>
                   </div>
@@ -387,47 +605,50 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                 <p className="whitespace-pre-wrap leading-relaxed">{message.content}</p>
                 <p
                   className={`text-xs mt-2 ${
-                    message.role === "user" ? "text-blue-100" : "text-slate-500"
+                    message.role === "user" ? "text-white/70" : "text-muted-foreground"
                   }`}
                 >
-                  {message.timestamp.toLocaleTimeString()}
+                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
           ))}
+
           {isLoading && (
-            <div className="flex justify-start">
-              <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm">
+            <div className="flex justify-start animate-fade-in">
+              <div className="bg-white/80 border border-border/30 rounded-2xl rounded-bl-md p-4 warm-shadow">
                 <div className="flex space-x-2">
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce" />
-                  <div className="w-2 h-2 bg-indigo-400 rounded-full animate-bounce delay-100" />
-                  <div className="w-2 h-2 bg-blue-400 rounded-full animate-bounce delay-200" />
+                  <div className="w-2.5 h-2.5 bg-terracotta rounded-full animate-bounce" />
+                  <div className="w-2.5 h-2.5 bg-coral rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
+                  <div className="w-2.5 h-2.5 bg-sage rounded-full animate-bounce" style={{ animationDelay: '0.2s' }} />
                 </div>
               </div>
             </div>
           )}
           <div ref={messagesEndRef} />
-        </CardContent>
-        <div className="border-t border-slate-200 p-4 bg-white/50 backdrop-blur-sm">
-          <div className="flex gap-2">
+        </div>
+
+        {/* Input Area */}
+        <div className="p-4 border-t border-border/30 bg-gradient-to-r from-white/90 to-warm-cream/90 backdrop-blur-sm">
+          <div className="flex gap-3 items-end">
             <Textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
-              className="flex-1 min-h-[60px] max-h-[120px] border-slate-300 focus:border-blue-500 focus:ring-blue-500 rounded-xl resize-none"
+              placeholder="Share what's on your mind..."
+              className="flex-1 min-h-[56px] max-h-[120px] rounded-2xl border-border/50 bg-white/70 focus:border-terracotta/50 focus:ring-terracotta/20 resize-none placeholder:text-muted-foreground/60"
               disabled={isLoading}
             />
             <Button
               onClick={sendMessage}
               disabled={!input.trim() || isLoading}
-              className="self-end bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 transition-all duration-300 shadow-md hover:shadow-lg"
+              className="h-14 w-14 rounded-2xl bg-gradient-to-br from-terracotta to-coral hover:from-terracotta/90 hover:to-coral/90 transition-all duration-300 warm-shadow hover:warm-shadow-lg disabled:opacity-50"
             >
-              <Send className="h-4 w-4" />
+              <Send className="h-5 w-5" />
             </Button>
           </div>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }
