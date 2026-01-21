@@ -104,12 +104,17 @@ export function AvatarVideoInterface({ sessionId, onBack }: AvatarVideoInterface
       setStreamingConfig(data.streaming)
       setGreeting(data.greeting)
 
-      // Generate initial greeting video
-      await generateGreeting(data.greeting, data.avatarConfig)
+      // Add greeting as text message immediately (skip slow video generation)
+      if (data.greeting) {
+        setMessages([{
+          role: "assistant",
+          text: data.greeting,
+        }])
+      }
 
       toast({
-        title: "Avatar Session Ready",
-        description: `Connected with ${data.avatarConfig.voiceName || "your avatar"}`,
+        title: "Session Ready",
+        description: "Press the microphone to start talking",
       })
     } catch (error: any) {
       console.error("Avatar session error:", error)
@@ -367,7 +372,7 @@ export function AvatarVideoInterface({ sessionId, onBack }: AvatarVideoInterface
                 Preparing Your Session
               </h3>
               <p className="text-sm text-muted-foreground">
-                Setting up your AI therapy companion...
+                Setting up your conversation session...
               </p>
             </div>
           </div>
@@ -487,17 +492,23 @@ export function AvatarVideoInterface({ sessionId, onBack }: AvatarVideoInterface
                 }}
               />
             ) : avatarConfig?.avatarImageUrl ? (
-              <div className="relative">
+              <div className="relative w-full h-full flex flex-col items-center justify-center p-8">
                 <img
                   src={avatarConfig.avatarImageUrl}
                   alt="Avatar"
-                  className="max-w-full max-h-full object-contain opacity-80 rounded-2xl"
+                  className="w-48 h-48 object-cover rounded-full border-4 border-white/20 shadow-2xl"
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-black/30 backdrop-blur-sm rounded-full p-4">
-                    <Sparkles className="h-8 w-8 text-white/80 animate-breathe" />
+                {/* Show greeting text */}
+                {messages.length > 0 && messages[0].text && (
+                  <div className="mt-6 max-w-md text-center">
+                    <p className="text-white/90 text-lg leading-relaxed">
+                      "{messages[0].text}"
+                    </p>
+                    <p className="text-white/50 text-sm mt-3">
+                      Press the microphone to respond
+                    </p>
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="text-white/50 text-center">
