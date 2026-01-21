@@ -77,10 +77,12 @@ export default function Home() {
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
-                <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-lg rounded-2xl border-border/50 hover:bg-soft-sand">
-                  <Play className="mr-2 h-5 w-5" />
-                  See How It Works
-                </Button>
+                <Link href="/how-it-works">
+                  <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-8 text-lg rounded-2xl border-border/50 hover:bg-soft-sand">
+                    <Play className="mr-2 h-5 w-5" />
+                    See How It Works
+                  </Button>
+                </Link>
               </div>
 
               <div className="flex items-center gap-6 pt-4">
