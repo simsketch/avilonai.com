@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Video, AlertCircle, Loader2 } from "lucide-react"
+import { Video, AlertCircle, Leaf, ArrowLeft, Volume2, VolumeX } from "lucide-react"
 import { useToast } from "@/components/ui/use-toast"
 
 interface VideoInterfaceProps {
@@ -99,26 +98,32 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] p-6">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardContent className="pt-6">
-            <div className="text-center space-y-4">
-              <div className="flex justify-center">
-                <div className="relative">
-                  <Video className="h-16 w-16 text-blue-600 animate-pulse" />
-                  <Loader2 className="h-8 w-8 text-indigo-600 animate-spin absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2" />
+        {/* Decorative blobs */}
+        <div className="fixed top-20 left-10 w-48 h-48 bg-terracotta-light/20 blob animate-float -z-10" />
+        <div className="fixed bottom-20 right-10 w-40 h-40 bg-sage-light/30 blob-2 animate-float -z-10" style={{ animationDelay: '2s' }} />
+
+        <div className="glass-card rounded-3xl p-10 warm-shadow-lg max-w-md w-full">
+          <div className="text-center space-y-6">
+            {/* Animated loading */}
+            <div className="relative">
+              <div className="w-24 h-24 mx-auto">
+                <div className="absolute inset-0 bg-gradient-to-br from-terracotta to-coral rounded-full animate-breathe" />
+                <div className="absolute inset-3 bg-gradient-to-br from-sage-light to-sage rounded-full animate-breathe-slow opacity-70" style={{ animationDelay: '0.5s' }} />
+                <div className="absolute inset-6 bg-white/80 rounded-full flex items-center justify-center">
+                  <Video className="h-6 w-6 text-terracotta" />
                 </div>
               </div>
-              <div>
-                <h3 className="text-lg font-semibold text-slate-800">
-                  Preparing Video Session
-                </h3>
-                <p className="text-sm text-slate-600 mt-2">
-                  Connecting you with your AI therapist...
-                </p>
-              </div>
             </div>
-          </CardContent>
-        </Card>
+            <div className="space-y-2">
+              <h3 className="font-display text-xl text-deep-brown">
+                Preparing Video Session
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Connecting you with your AI therapist...
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -126,20 +131,27 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
   if (error) {
     return (
       <div className="flex items-center justify-center min-h-[calc(100vh-8rem)] p-6">
-        <Card className="w-full max-w-md shadow-lg">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2 text-red-600">
-              <AlertCircle className="h-5 w-5" />
-              Unable to Start Video Session
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-              <p className="text-sm text-red-800">{error}</p>
+        <div className="glass-card rounded-3xl p-8 warm-shadow-lg max-w-md w-full">
+          <div className="text-center space-y-6">
+            <div className="w-16 h-16 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+              <AlertCircle className="h-8 w-8 text-red-500" />
             </div>
-            <div className="flex gap-2">
+            <div className="space-y-2">
+              <h3 className="font-display text-xl text-deep-brown">
+                Unable to Start Session
+              </h3>
+              <p className="text-sm text-red-600 bg-red-50 rounded-xl p-3">
+                {error}
+              </p>
+            </div>
+            <div className="flex gap-3">
               {onBack && (
-                <Button variant="outline" onClick={onBack} className="flex-1">
+                <Button
+                  variant="ghost"
+                  onClick={onBack}
+                  className="flex-1 h-12 rounded-xl hover:bg-soft-sand"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
                   Go Back
                 </Button>
               )}
@@ -149,13 +161,13 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
                   initializedRef.current = false
                   initializeVideoSession()
                 }}
-                className="flex-1"
+                className="flex-1 h-12 rounded-xl bg-gradient-to-r from-terracotta to-coral hover:from-terracotta/90 hover:to-coral/90 warm-shadow"
               >
                 Try Again
               </Button>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     )
   }
@@ -166,34 +178,47 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
     <div
       className="flex flex-col max-w-6xl mx-auto p-4 md:p-6"
       style={{
-        height: 'calc(100dvh - 8rem)', // Dynamic viewport height for better mobile support
+        height: 'calc(100dvh - 4rem)', // Dynamic viewport height for better mobile support
       }}
     >
-      <Card className="flex-1 flex flex-col shadow-lg border-slate-200 overflow-hidden">
-        <CardHeader className="border-b border-slate-200 bg-white/50 backdrop-blur-sm py-3 md:py-6">
+      {/* Decorative blobs */}
+      <div className="fixed top-20 right-10 w-32 h-32 bg-sage-light/20 blob animate-float -z-10 opacity-50" />
+      <div className="fixed bottom-40 left-5 w-24 h-24 bg-coral/10 blob-2 animate-float -z-10 opacity-50" style={{ animationDelay: '3s' }} />
+
+      {/* Main Container */}
+      <div className="flex-1 flex flex-col glass-card rounded-3xl overflow-hidden warm-shadow-lg">
+        {/* Header */}
+        <div className="px-4 md:px-6 py-3 md:py-4 border-b border-border/30 bg-gradient-to-r from-white/80 to-warm-cream/80 backdrop-blur-sm">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 md:gap-3">
-              <div className="p-1.5 md:p-2 bg-gradient-to-r from-blue-100 to-indigo-100 rounded-lg">
-                <Video className="h-4 w-4 md:h-5 md:w-5 text-blue-600" />
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-terracotta to-coral flex items-center justify-center animate-breathe-slow">
+                <Leaf className="w-5 h-5 text-white" />
               </div>
               <div>
-                <CardTitle className="text-slate-800 text-sm md:text-base">
-                  Video Session with {replicaName || "Avilon"}
-                </CardTitle>
-                <p className="text-xs md:text-sm text-slate-600 mt-0.5 md:mt-1 hidden sm:block">
-                  Face-to-face therapy conversation
+                <h2 className="font-display text-base md:text-lg text-deep-brown">
+                  Session with {replicaName || "Avilon"}
+                </h2>
+                <p className="text-xs text-muted-foreground hidden sm:block">
+                  Real-time video conversation
                 </p>
               </div>
             </div>
             {onBack && (
-              <Button variant="outline" onClick={handleEndSession} size="sm" className="text-xs md:text-sm">
+              <Button
+                variant="outline"
+                onClick={handleEndSession}
+                size="sm"
+                className="rounded-xl border-border/50 hover:bg-soft-sand"
+              >
                 End
               </Button>
             )}
           </div>
-        </CardHeader>
-        <CardContent
-          className="flex-1 p-0 relative bg-gradient-to-b from-slate-900 to-slate-800 overflow-hidden"
+        </div>
+
+        {/* Video Area */}
+        <div
+          className="flex-1 relative bg-gradient-to-b from-deep-brown/90 to-deep-brown overflow-hidden"
           style={{
             // Prevent mobile Safari bounce/scroll
             WebkitOverflowScrolling: 'touch',
@@ -218,15 +243,20 @@ export function VideoInterface({ sessionId, onBack }: VideoInterfaceProps) {
             />
           ) : (
             <div className="flex items-center justify-center h-full">
-              <p className="text-white">Loading video...</p>
+              <div className="text-white/50 text-center">
+                <Video className="h-16 w-16 mx-auto mb-4 opacity-50" />
+                <p className="text-sm">Loading video...</p>
+              </div>
             </div>
           )}
-        </CardContent>
-      </Card>
-      <div className="mt-3 md:mt-4 p-3 md:p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-xs md:text-sm text-blue-900">
-          <strong>Tip:</strong> Make sure your camera and microphone are enabled for the best experience.
-          {' '}You can end the video session at any time by clicking "End" above.
+        </div>
+      </div>
+
+      {/* Tip */}
+      <div className="mt-4 p-4 bg-gradient-to-r from-sage-light/30 to-sage/20 border border-sage/20 rounded-2xl">
+        <p className="text-sm text-sage text-center">
+          <strong className="font-medium">Tip:</strong> Make sure your camera and microphone are enabled for the best experience.
+          {' '}You can end the session at any time by clicking "End" above.
         </p>
       </div>
     </div>

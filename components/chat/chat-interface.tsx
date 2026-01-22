@@ -6,8 +6,9 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Send, AlertTriangle, Video, MessageSquare, User, Sparkles, Check, Heart, Brain, Wind, Leaf } from "lucide-react"
+import { Send, AlertTriangle, Video, MessageSquare, User, Sparkles, Check, Heart, Brain, Wind, Leaf, Zap, Palette } from "lucide-react"
 import { AvatarVideoInterface } from "./avatar-video-interface"
+import { VideoInterface } from "./video-interface"
 import { AvatarSetup } from "./avatar-setup"
 
 interface Message {
@@ -39,6 +40,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   const [sessionStarted, setSessionStarted] = useState(!!sessionId)
   const [isLoadingSession, setIsLoadingSession] = useState(!!sessionId)
   const [isVideoSession, setIsVideoSession] = useState(false)
+  const [videoProvider, setVideoProvider] = useState<"tavus" | "custom">("tavus")
 
   // Avatar/Digital Twin state
   const [avatarProfile, setAvatarProfile] = useState<AvatarProfile | null>(null)
@@ -123,8 +125,8 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
       return
     }
 
-    // If video mode but no avatar profile, show setup
-    if (sessionMode === "video" && !avatarProfile) {
+    // If video mode with custom avatar but no avatar profile, show setup
+    if (sessionMode === "video" && videoProvider === "custom" && !avatarProfile) {
       setShowAvatarSetup(true)
       return
     }
@@ -420,48 +422,119 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                 </button>
               </div>
 
-              {/* Digital Twin Status */}
+              {/* Video Provider Selection */}
               {sessionMode === "video" && (
-                <div className={`
-                  p-4 rounded-2xl transition-all duration-300
-                  ${avatarProfile
-                    ? "bg-sage-light/30 border border-sage/20"
-                    : "bg-coral/10 border border-coral/20"
-                  }
-                `}>
-                  <div className="flex items-center gap-3">
-                    <div className={`
-                      w-10 h-10 rounded-full flex items-center justify-center
-                      ${avatarProfile ? "bg-sage/20" : "bg-coral/20"}
-                    `}>
-                      {avatarProfile ? (
-                        <User className="h-5 w-5 text-sage" />
-                      ) : (
-                        <Sparkles className="h-5 w-5 text-coral" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <p className={`font-medium ${avatarProfile ? "text-sage" : "text-deep-brown"}`}>
-                        {avatarProfile ? "Digital Twin Ready" : "Create Your Digital Twin"}
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        {avatarProfile
-                          ? `Voice: ${avatarProfile.voiceName || "Custom"}`
-                          : "Upload a photo & voice sample"
+                <div className="space-y-4">
+                  <Label className="text-sm font-medium text-deep-brown">Video Mode</Label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setVideoProvider("tavus")}
+                      className={`
+                        relative p-4 rounded-xl text-left transition-all duration-300 ease-organic
+                        ${videoProvider === "tavus"
+                          ? "bg-gradient-to-br from-terracotta/15 to-coral/15 border-2 border-terracotta/40"
+                          : "bg-soft-sand/50 border-2 border-transparent hover:border-terracotta/20"
                         }
-                      </p>
-                    </div>
-                    {avatarProfile && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-sage hover:text-sage/80 hover:bg-sage/10"
-                        onClick={() => setShowAvatarSetup(true)}
-                      >
-                        Update
-                      </Button>
-                    )}
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`
+                          w-10 h-10 rounded-xl flex items-center justify-center
+                          ${videoProvider === "tavus" ? "bg-terracotta/20" : "bg-terracotta-light/30"}
+                        `}>
+                          <Zap className={`h-5 w-5 ${videoProvider === "tavus" ? "text-terracotta" : "text-terracotta/70"}`} />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${videoProvider === "tavus" ? "text-terracotta" : "text-deep-brown"}`}>
+                            Quick Session
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Real-time, &lt;2s latency
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setVideoProvider("custom")}
+                      className={`
+                        relative p-4 rounded-xl text-left transition-all duration-300 ease-organic
+                        ${videoProvider === "custom"
+                          ? "bg-gradient-to-br from-sage/15 to-sage-light/15 border-2 border-sage/40"
+                          : "bg-soft-sand/50 border-2 border-transparent hover:border-sage/20"
+                        }
+                      `}
+                    >
+                      {avatarProfile && (
+                        <div className="absolute top-2 right-2">
+                          <div className="w-5 h-5 rounded-full bg-sage flex items-center justify-center">
+                            <Check className="h-3 w-3 text-white" />
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <div className={`
+                          w-10 h-10 rounded-xl flex items-center justify-center
+                          ${videoProvider === "custom" ? "bg-sage/20" : "bg-sage-light/30"}
+                        `}>
+                          <Palette className={`h-5 w-5 ${videoProvider === "custom" ? "text-sage" : "text-sage/70"}`} />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${videoProvider === "custom" ? "text-sage" : "text-deep-brown"}`}>
+                            Custom Avatar
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Your own avatar
+                          </p>
+                        </div>
+                      </div>
+                    </button>
                   </div>
+
+                  {/* Custom Avatar Status */}
+                  {videoProvider === "custom" && (
+                    <div className={`
+                      p-4 rounded-2xl transition-all duration-300
+                      ${avatarProfile
+                        ? "bg-sage-light/30 border border-sage/20"
+                        : "bg-coral/10 border border-coral/20"
+                      }
+                    `}>
+                      <div className="flex items-center gap-3">
+                        <div className={`
+                          w-10 h-10 rounded-full flex items-center justify-center
+                          ${avatarProfile ? "bg-sage/20" : "bg-coral/20"}
+                        `}>
+                          {avatarProfile ? (
+                            <User className="h-5 w-5 text-sage" />
+                          ) : (
+                            <Sparkles className="h-5 w-5 text-coral" />
+                          )}
+                        </div>
+                        <div className="flex-1">
+                          <p className={`font-medium ${avatarProfile ? "text-sage" : "text-deep-brown"}`}>
+                            {avatarProfile ? "Digital Twin Ready" : "Create Your Digital Twin"}
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            {avatarProfile
+                              ? `Voice: ${avatarProfile.voiceName || "Custom"}`
+                              : "Upload a photo & voice sample"
+                            }
+                          </p>
+                        </div>
+                        {avatarProfile && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-sage hover:text-sage/80 hover:bg-sage/10"
+                            onClick={() => setShowAvatarSetup(true)}
+                          >
+                            Update
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -524,8 +597,10 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
               disabled={isLoadingAvatar || moodScore === null}
               className="w-full h-14 rounded-2xl text-lg font-display bg-gradient-to-r from-terracotta to-coral hover:from-terracotta/90 hover:to-coral/90 transition-all duration-300 warm-shadow hover:warm-shadow-lg organic-hover disabled:opacity-50"
             >
-              {sessionMode === "video" && !avatarProfile
+              {sessionMode === "video" && videoProvider === "custom" && !avatarProfile
                 ? "Create Digital Twin & Start"
+                : sessionMode === "video" && videoProvider === "tavus"
+                ? "Start Quick Session"
                 : "Begin Session"
               }
             </Button>
@@ -535,17 +610,29 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
     )
   }
 
-  // If video session is active, show AvatarVideoInterface (replaced Tavus)
+  // If video session is active, show appropriate video interface
   if (isVideoSession && currentSessionId) {
-    return (
-      <AvatarVideoInterface
-        sessionId={currentSessionId}
-        onBack={() => {
-          setIsVideoSession(false)
-          setSessionStarted(false)
-        }}
-      />
-    )
+    if (videoProvider === "tavus") {
+      return (
+        <VideoInterface
+          sessionId={currentSessionId}
+          onBack={() => {
+            setIsVideoSession(false)
+            setSessionStarted(false)
+          }}
+        />
+      )
+    } else {
+      return (
+        <AvatarVideoInterface
+          sessionId={currentSessionId}
+          onBack={() => {
+            setIsVideoSession(false)
+            setSessionStarted(false)
+          }}
+        />
+      )
+    }
   }
 
   // Chat Interface
