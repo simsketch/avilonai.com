@@ -1,0 +1,16 @@
+# Pipecat AI framework with integrations
+pipecat-ai[daily,deepgram,openai,cartesia,silero,simli]>=0.0.47
+
+# Deepgram SDK for LiveOptions
+deepgram-sdk>=3.0.0
+
+# FastAPI server
+fastapi>=0.109.0
+uvicorn>=0.27.0
+
+# Environment and utilities
+python-dotenv>=1.0.0
+httpx>=0.26.0
+
+# Audio processing
+numpy>=1.24.0

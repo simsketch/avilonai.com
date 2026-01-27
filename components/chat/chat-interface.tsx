@@ -6,9 +6,11 @@ import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { Send, AlertTriangle, Video, MessageSquare, User, Sparkles, Check, Heart, Brain, Wind, Leaf, Zap, Palette } from "lucide-react"
+import { Send, AlertTriangle, Video, MessageSquare, User, Sparkles, Check, Heart, Brain, Wind, Leaf, Zap, Palette, Cpu, Camera, Box } from "lucide-react"
 import { AvatarVideoInterface } from "./avatar-video-interface"
 import { VideoInterface } from "./video-interface"
+import { PipecatVideoInterface, type AvatarType } from "./pipecat-video-interface"
+import { SimliVideoInterface } from "./simli-video-interface"
 import { AvatarSetup } from "./avatar-setup"
 
 interface Message {
@@ -40,7 +42,8 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
   const [sessionStarted, setSessionStarted] = useState(!!sessionId)
   const [isLoadingSession, setIsLoadingSession] = useState(!!sessionId)
   const [isVideoSession, setIsVideoSession] = useState(false)
-  const [videoProvider, setVideoProvider] = useState<"tavus" | "custom">("tavus")
+  const [videoProvider, setVideoProvider] = useState<"tavus" | "custom" | "pipecat">("tavus")
+  const [pipecatAvatarType, setPipecatAvatarType] = useState<AvatarType>("sprite")
 
   // Avatar/Digital Twin state
   const [avatarProfile, setAvatarProfile] = useState<AvatarProfile | null>(null)
@@ -426,7 +429,7 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
               {sessionMode === "video" && (
                 <div className="space-y-4">
                   <Label className="text-sm font-medium text-deep-brown">Video Mode</Label>
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-3 gap-3">
                     <button
                       onClick={() => setVideoProvider("tavus")}
                       className={`
@@ -450,6 +453,34 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                           </p>
                           <p className="text-xs text-muted-foreground">
                             Real-time, &lt;2s latency
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+
+                    <button
+                      onClick={() => setVideoProvider("pipecat")}
+                      className={`
+                        relative p-4 rounded-xl text-left transition-all duration-300 ease-organic
+                        ${videoProvider === "pipecat"
+                          ? "bg-gradient-to-br from-violet-500/15 to-purple-500/15 border-2 border-violet-500/40"
+                          : "bg-soft-sand/50 border-2 border-transparent hover:border-violet-500/20"
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className={`
+                          w-10 h-10 rounded-xl flex items-center justify-center
+                          ${videoProvider === "pipecat" ? "bg-violet-500/20" : "bg-violet-200/30"}
+                        `}>
+                          <Cpu className={`h-5 w-5 ${videoProvider === "pipecat" ? "text-violet-600" : "text-violet-400"}`} />
+                        </div>
+                        <div>
+                          <p className={`font-medium ${videoProvider === "pipecat" ? "text-violet-600" : "text-deep-brown"}`}>
+                            Real-time AI
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            Instant, &lt;800ms
                           </p>
                         </div>
                       </div>
@@ -490,6 +521,71 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                       </div>
                     </button>
                   </div>
+
+                  {/* Pipecat Avatar Type Selection */}
+                  {videoProvider === "pipecat" && (
+                    <div className="space-y-3 animate-fade-in">
+                      <Label className="text-sm text-muted-foreground">Choose Avatar Style</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <button
+                          onClick={() => setPipecatAvatarType("simli")}
+                          className={`
+                            p-3 rounded-xl text-center transition-all duration-300 ease-organic
+                            ${pipecatAvatarType === "simli"
+                              ? "bg-gradient-to-br from-amber-500/15 to-orange-500/15 border-2 border-amber-500/40"
+                              : "bg-soft-sand/30 border-2 border-transparent hover:border-amber-300/30"
+                            }
+                          `}
+                        >
+                          <Camera className={`h-5 w-5 mx-auto mb-1 ${pipecatAvatarType === "simli" ? "text-amber-600" : "text-warm-gray"}`} />
+                          <p className={`text-xs font-medium ${pipecatAvatarType === "simli" ? "text-amber-600" : "text-deep-brown"}`}>
+                            Your Photo
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Upload & Talk
+                          </p>
+                        </button>
+
+                        <button
+                          onClick={() => setPipecatAvatarType("sprite")}
+                          className={`
+                            p-3 rounded-xl text-center transition-all duration-300 ease-organic
+                            ${pipecatAvatarType === "sprite"
+                              ? "bg-gradient-to-br from-violet-500/15 to-purple-500/15 border-2 border-violet-500/40"
+                              : "bg-soft-sand/30 border-2 border-transparent hover:border-violet-300/30"
+                            }
+                          `}
+                        >
+                          <Sparkles className={`h-5 w-5 mx-auto mb-1 ${pipecatAvatarType === "sprite" ? "text-violet-600" : "text-warm-gray"}`} />
+                          <p className={`text-xs font-medium ${pipecatAvatarType === "sprite" ? "text-violet-600" : "text-deep-brown"}`}>
+                            Animated
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            2D Sprite
+                          </p>
+                        </button>
+
+                        <button
+                          onClick={() => setPipecatAvatarType("rpm")}
+                          className={`
+                            p-3 rounded-xl text-center transition-all duration-300 ease-organic
+                            ${pipecatAvatarType === "rpm"
+                              ? "bg-gradient-to-br from-violet-500/15 to-purple-500/15 border-2 border-violet-500/40"
+                              : "bg-soft-sand/30 border-2 border-transparent hover:border-violet-300/30"
+                            }
+                          `}
+                        >
+                          <Box className={`h-5 w-5 mx-auto mb-1 ${pipecatAvatarType === "rpm" ? "text-violet-600" : "text-warm-gray"}`} />
+                          <p className={`text-xs font-medium ${pipecatAvatarType === "rpm" ? "text-violet-600" : "text-deep-brown"}`}>
+                            3D Avatar
+                          </p>
+                          <p className="text-[10px] text-muted-foreground">
+                            Ready Player Me
+                          </p>
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   {/* Custom Avatar Status */}
                   {videoProvider === "custom" && (
@@ -601,6 +697,8 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
                 ? "Create Digital Twin & Start"
                 : sessionMode === "video" && videoProvider === "tavus"
                 ? "Start Quick Session"
+                : sessionMode === "video" && videoProvider === "pipecat"
+                ? "Start Real-time AI"
                 : "Begin Session"
               }
             </Button>
@@ -616,6 +714,30 @@ export function ChatInterface({ sessionId }: ChatInterfaceProps) {
       return (
         <VideoInterface
           sessionId={currentSessionId}
+          onBack={() => {
+            setIsVideoSession(false)
+            setSessionStarted(false)
+          }}
+        />
+      )
+    } else if (videoProvider === "pipecat") {
+      // Use SimliVideoInterface for photorealistic avatar with custom photo upload
+      if (pipecatAvatarType === "simli") {
+        return (
+          <SimliVideoInterface
+            sessionId={currentSessionId}
+            onBack={() => {
+              setIsVideoSession(false)
+              setSessionStarted(false)
+            }}
+          />
+        )
+      }
+      // Use PipecatVideoInterface for sprite/rpm avatars (uses Daily.co)
+      return (
+        <PipecatVideoInterface
+          sessionId={currentSessionId}
+          avatarType={pipecatAvatarType}
           onBack={() => {
             setIsVideoSession(false)
             setSessionStarted(false)
