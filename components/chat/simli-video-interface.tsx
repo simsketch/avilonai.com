@@ -36,11 +36,17 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
   const videoRef = useRef<HTMLVideoElement>(null)
   const audioRef = useRef<HTMLAudioElement>(null)
   const simliClientRef = useRef<SimliClient | null>(null)
+  const simliReadyRef = useRef(false)
+  const audioBufferRef = useRef<Uint8Array[]>([])
   const wsRef = useRef<WebSocket | null>(null)
   const mediaStreamRef = useRef<MediaStream | null>(null)
   const audioContextRef = useRef<AudioContext | null>(null)
   const processorRef = useRef<ScriptProcessorNode | null>(null)
+  const playbackContextRef = useRef<AudioContext | null>(null)
   const mountedRef = useRef(true)
+  const botTextAccumRef = useRef("")
+  const connectingRef = useRef(false)
+  const greetingPhaseRef = useRef(true)
 
   const { toast } = useToast()
 
@@ -101,7 +107,8 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
 
   // Connect to WebSocket backend
   const connectToWebSocket = useCallback(async (faceIdToUse: string) => {
-    if (!mountedRef.current) return
+    if (!mountedRef.current || connectingRef.current || wsRef.current) return
+    connectingRef.current = true
 
     try {
       setIsLoading(true)
@@ -147,29 +154,92 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
 
           switch (message.type) {
             case "audio":
-              // Send TTS audio to Simli for avatar rendering
-              if (simliClientRef.current && message.data) {
+              // Send TTS audio to Simli for avatar rendering + play directly
+              if (message.data) {
                 const audioData = Uint8Array.from(atob(message.data), (c) => c.charCodeAt(0))
-                simliClientRef.current.sendAudioData(audioData)
                 setIsBotSpeaking(true)
+
+                // Send to Simli for lip sync
+                if (simliClientRef.current && simliReadyRef.current) {
+                  simliClientRef.current.sendAudioData(audioData)
+                } else {
+                  // Buffer audio until Simli is ready
+                  audioBufferRef.current.push(audioData)
+                }
+
+                // Also play audio directly through Web Audio API as fallback
+                playAudioChunk(audioData, message.sample_rate || 16000)
               }
               break
 
             case "text":
-              // Bot response text for captions
-              setCaptions((prev) => [
-                ...prev.slice(-9),
-                {
-                  speaker: "bot",
-                  text: message.text,
-                  isFinal: true,
-                  timestamp: Date.now(),
-                },
-              ])
+              // Skip text frames during greeting phase (greeting is shown separately)
+              if (greetingPhaseRef.current) break
+              // Bot response text - accumulate tokens into current response
+              // Add space before token if accumulator is non-empty and token doesn't start with punctuation
+              const token = message.text
+              if (botTextAccumRef.current && token && !/^[.,!?;:'")\]}]/.test(token)) {
+                botTextAccumRef.current += " " + token
+              } else {
+                botTextAccumRef.current += token
+              }
+              setCaptions((prev) => {
+                // Update the last bot caption if it exists and is being accumulated
+                const lastIdx = prev.length - 1
+                if (lastIdx >= 0 && prev[lastIdx].speaker === "bot" && !prev[lastIdx].isFinal) {
+                  const updated = [...prev]
+                  updated[lastIdx] = {
+                    ...updated[lastIdx],
+                    text: botTextAccumRef.current,
+                  }
+                  return updated
+                }
+                // Start a new bot caption
+                return [
+                  ...prev.slice(-9),
+                  {
+                    speaker: "bot",
+                    text: botTextAccumRef.current,
+                    isFinal: false,
+                    timestamp: Date.now(),
+                  },
+                ]
+              })
+              break
+
+            case "bot_response_end":
+              // Mark current bot caption as final and reset accumulator
+              greetingPhaseRef.current = false
+              botTextAccumRef.current = ""
+              setCaptions((prev) => {
+                const lastIdx = prev.length - 1
+                if (lastIdx >= 0 && prev[lastIdx].speaker === "bot") {
+                  const updated = [...prev]
+                  updated[lastIdx] = { ...updated[lastIdx], isFinal: true }
+                  return updated
+                }
+                return prev
+              })
+              setIsBotSpeaking(false)
               break
 
             case "transcription":
+              // End greeting phase on first user speech
+              greetingPhaseRef.current = false
               // User transcription for captions
+              // Finalize any in-progress bot caption first
+              if (botTextAccumRef.current) {
+                botTextAccumRef.current = ""
+                setCaptions((prev) => {
+                  const lastIdx = prev.length - 1
+                  if (lastIdx >= 0 && prev[lastIdx].speaker === "bot" && !prev[lastIdx].isFinal) {
+                    const updated = [...prev]
+                    updated[lastIdx] = { ...updated[lastIdx], isFinal: true }
+                    return updated
+                  }
+                  return prev
+                })
+              }
               setCaptions((prev) => {
                 const filtered = message.is_final
                   ? prev.filter((c) => c.speaker !== "user" || c.isFinal)
@@ -187,7 +257,7 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
               break
 
             case "greeting":
-              // Initial greeting
+              // Initial greeting - show as complete caption
               setCaptions((prev) => [
                 ...prev.slice(-9),
                 {
@@ -237,6 +307,30 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
       }
     }
   }, [sessionId, toast])
+
+  // Play TTS audio directly through Web Audio API
+  const playAudioChunk = (pcmData: Uint8Array, sampleRate: number) => {
+    try {
+      if (!playbackContextRef.current) {
+        playbackContextRef.current = new AudioContext({ sampleRate })
+      }
+      const ctx = playbackContextRef.current
+      // Convert Int16 PCM to Float32
+      const int16 = new Int16Array(pcmData.buffer, pcmData.byteOffset, pcmData.byteLength / 2)
+      const float32 = new Float32Array(int16.length)
+      for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768
+      }
+      const buffer = ctx.createBuffer(1, float32.length, sampleRate)
+      buffer.getChannelData(0).set(float32)
+      const source = ctx.createBufferSource()
+      source.buffer = buffer
+      source.connect(ctx.destination)
+      source.start()
+    } catch (err) {
+      // Silently ignore audio playback errors
+    }
+  }
 
   // Start microphone capture
   const startMicrophoneCapture = async () => {
@@ -317,6 +411,11 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
     if (simliClientRef.current) {
       simliClientRef.current.close()
       simliClientRef.current = null
+    }
+    simliReadyRef.current = false
+    if (playbackContextRef.current) {
+      playbackContextRef.current.close()
+      playbackContextRef.current = null
     }
   }, [])
 
@@ -405,6 +504,16 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
         console.log("Starting Simli client...")
         await simliClient.start()
         console.log("Simli client started successfully")
+
+        // Mark Simli as ready and flush buffered audio
+        simliReadyRef.current = true
+        if (audioBufferRef.current.length > 0) {
+          console.log(`Flushing ${audioBufferRef.current.length} buffered audio chunks to Simli`)
+          for (const chunk of audioBufferRef.current) {
+            simliClient.sendAudioData(chunk)
+          }
+          audioBufferRef.current = []
+        }
       } catch (err: any) {
         console.error("Simli initialization error:", err)
       }

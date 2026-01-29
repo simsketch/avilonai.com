@@ -30,6 +30,7 @@ from pipecat.frames.frames import (
     TranscriptionFrame,
     TTSAudioRawFrame,
     TTSSpeakFrame,
+    TTSStoppedFrame,
     StartFrame,
     EndFrame,
     UserStartedSpeakingFrame,
@@ -115,6 +116,12 @@ class AudioOutputCapture(FrameProcessor):
                 "type": "transcription",
                 "text": frame.text,
                 "is_final": True,
+            })
+
+        elif isinstance(frame, TTSStoppedFrame):
+            # Signal end of bot response
+            await self._on_audio({
+                "type": "bot_response_end",
             })
 
         await self.push_frame(frame, direction)
