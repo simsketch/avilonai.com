@@ -452,6 +452,7 @@ export default function Home() {
               <Link href="/privacy" className="hover:text-deep-brown transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-deep-brown transition-colors">Terms</Link>
               <Link href="/support" className="hover:text-deep-brown transition-colors">Support</Link>
+              <a href="tel:+15615039444" className="hover:text-deep-brown transition-colors">561.503.9444</a>
             </div>
             <p className="text-sm text-muted-foreground">
               © 2025 Avilon. All rights reserved.
