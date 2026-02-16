@@ -222,7 +222,7 @@ export default function DashboardPage() {
                       boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
                     }}
                     labelStyle={{ color: '#1e293b', fontWeight: 600 }}
-                    formatter={(value: number) => [`${value}/10`, 'Mood']}
+                    formatter={(value: number | undefined) => [`${value ?? 0}/10`, 'Mood']}
                   />
                   <Area
                     type="monotone"
