@@ -50,6 +50,28 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
 
   const { toast } = useToast()
 
+  // Resample 16-bit PCM audio from srcRate to dstRate using linear interpolation
+  const resamplePCM16 = (input: Uint8Array, srcRate: number, dstRate: number): Uint8Array => {
+    if (srcRate === dstRate) return input
+    const srcView = new DataView(input.buffer, input.byteOffset, input.byteLength)
+    const srcSamples = input.byteLength / 2
+    const ratio = srcRate / dstRate
+    const dstSamples = Math.floor(srcSamples / ratio)
+    const output = new Uint8Array(dstSamples * 2)
+    const dstView = new DataView(output.buffer)
+
+    for (let i = 0; i < dstSamples; i++) {
+      const srcPos = i * ratio
+      const srcIdx = Math.floor(srcPos)
+      const frac = srcPos - srcIdx
+      const s0 = srcIdx < srcSamples ? srcView.getInt16(srcIdx * 2, true) : 0
+      const s1 = srcIdx + 1 < srcSamples ? srcView.getInt16((srcIdx + 1) * 2, true) : s0
+      const sample = Math.round(s0 + frac * (s1 - s0))
+      dstView.setInt16(i * 2, Math.max(-32768, Math.min(32767, sample)), true)
+    }
+    return output
+  }
+
   // Handle photo upload
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -154,21 +176,21 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
 
           switch (message.type) {
             case "audio":
-              // Send TTS audio to Simli for avatar rendering + play directly
+              // Send TTS audio to Simli for avatar rendering (Simli handles audio playback via audioRef)
               if (message.data) {
-                const audioData = Uint8Array.from(atob(message.data), (c) => c.charCodeAt(0))
+                const rawAudio = Uint8Array.from(atob(message.data), (c) => c.charCodeAt(0))
+                // Resample from Cartesia TTS 24kHz to Simli's expected 16kHz
+                const sampleRate = message.sample_rate || 24000
+                const audioData = resamplePCM16(rawAudio, sampleRate, 16000)
                 setIsBotSpeaking(true)
 
-                // Send to Simli for lip sync
+                // Send to Simli for lip sync + audio playback
                 if (simliClientRef.current && simliReadyRef.current) {
                   simliClientRef.current.sendAudioData(audioData)
                 } else {
                   // Buffer audio until Simli is ready
                   audioBufferRef.current.push(audioData)
                 }
-
-                // Also play audio directly through Web Audio API as fallback
-                playAudioChunk(audioData, message.sample_rate || 16000)
               }
               break
 
@@ -447,14 +469,15 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
   // State for storing config
   const [simliConfig, setSimliConfig] = useState<{ apiKey: string; faceId: string } | null>(null)
 
-  // Connect on mount using default face
+  // Connect on mount using default face (run once only)
+  const initialConnectRef = useRef(false)
   useEffect(() => {
-    if (showUpload && !faceId) {
-      // Use default face from backend config
+    if (!initialConnectRef.current && showUpload && !faceId) {
+      initialConnectRef.current = true
       setShowUpload(false)
       connectToWebSocket("default")
     }
-  }, [showUpload, faceId, connectToWebSocket])
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Initialize Simli after video element is rendered and WebSocket is connected
   useEffect(() => {
@@ -477,6 +500,8 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
           }
         }
 
+        if (!config) return
+
         const simliClient = new SimliClient()
         simliClientRef.current = simliClient
 
@@ -484,7 +509,7 @@ export function SimliVideoInterface({ sessionId, onBack }: SimliVideoInterfacePr
         console.log("Initializing Simli with faceId:", actualFaceId)
 
         simliClient.Initialize({
-          apiKey: config.apiKey,
+          apiKey: config!.apiKey,
           faceID: actualFaceId,
           handleSilence: true,
           maxSessionLength: 3600,
