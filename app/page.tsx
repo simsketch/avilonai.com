@@ -67,7 +67,7 @@ export default function Home() {
               <p className="text-lg text-muted-foreground max-w-lg">
                 Create a digital twin of your partner, parent, boss, or anyone you need
                 to talk to. Rehearse difficult conversations in a safe space before
-                having them for real.
+                having them in person.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4">
@@ -371,7 +371,7 @@ export default function Home() {
           <div className="grid md:grid-cols-3 gap-6">
             {[
               {
-                quote: "I practiced telling my dad about my career change for a week before doing it for real. When the moment came, I felt so much more prepared. The conversation went better than I ever expected.",
+                quote: "I spent a week rehearsing how to tell my dad about my career change. When the moment finally came, I felt genuinely prepared. The conversation went better than I ever expected.",
                 author: "Michael R.",
                 role: "Marketing Director"
               },
