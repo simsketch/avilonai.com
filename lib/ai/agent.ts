@@ -1,16 +1,22 @@
 import OpenAI from "openai"
 
-// Initialize OpenAI client with OpenRouter
-const openai = new OpenAI({
-  apiKey: process.env.OPENROUTER_API_KEY,
-  baseURL: "https://openrouter.ai/api/v1",
-  defaultHeaders: {
-    "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-    "X-Title": "Avilon Therapy Bot",
-  },
-  timeout: 30000, // 30 second timeout
-  maxRetries: 2, // Retry twice on connection errors
-})
+// Lazily initialize OpenAI client to avoid build-time errors
+let _openai: OpenAI | null = null
+function getOpenAI() {
+  if (!_openai) {
+    _openai = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-Title": "Avilon Therapy Bot",
+      },
+      timeout: 30000,
+      maxRetries: 2,
+    })
+  }
+  return _openai
+}
 
 export const SYSTEM_PROMPT = `You are Avilon, a supportive AI therapy assistant trained in basic cognitive behavioral therapy (CBT) techniques.
 
@@ -165,7 +171,7 @@ export async function generateSessionSummary(messages: ChatMessage[]): Promise<s
       },
     ]
 
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: "deepseek/deepseek-r1-distill-llama-70b",
       messages: summaryPrompt,
       temperature: 0.3,
